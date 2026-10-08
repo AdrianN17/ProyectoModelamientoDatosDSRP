@@ -111,7 +111,7 @@ GO
 CREATE TABLE modelado.Servicio
 (
     id_servicio INT NOT NULL,
-    descripcion VARCHAR(20) NULL,
+    descripcion VARCHAR(50) NULL,
     id_equipo INT NULL,
     estado INT NULL,
 

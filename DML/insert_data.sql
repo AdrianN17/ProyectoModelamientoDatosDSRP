@@ -74,16 +74,16 @@ GO
 -- Servicio
 INSERT INTO modelado.Servicio (id_servicio, descripcion, id_equipo, estado)
 VALUES
-    (1,  'Banca Movil', 1, 1),
-    (2,  'Banca Web', 1, 1),
-    (3,  'Core de Cuentas', 2, 1),
-    (4,  'Procesos Batch', 2, 1),
-    (5,  'Control de Accesos', 3, 1),
-    (6,  'Monitoreo Fraude', 3, 1),
-    (7,  'Red y Comunicacion', 4, 1),
-    (8,  'Red de Cajeros ATM', 4, 1),
-    (9,  'Autorizacion POS', 6, 1),
-    (10, 'Mesa de Ayuda', 5, 1);
+    (1,  'Aplicacion Banca Movil', 1, 1),
+    (2,  'Aplicacion Banca Web', 1, 1),
+    (3,  'Plataforma Core Bancario', 2, 1),
+    (4,  'Planificador Batch', 2, 1),
+    (5,  'Gestion de Accesos', 3, 1),
+    (6,  'Plataforma Antifraude', 3, 1),
+    (7,  'Red Corporativa', 4, 1),
+    (8,  'Infraestructura ATM', 4, 1),
+    (9,  'Plataforma POS', 6, 1),
+    (10, 'Mesa de Ayuda TI', 5, 1);
 GO
 
 -- EstadoTransicion
