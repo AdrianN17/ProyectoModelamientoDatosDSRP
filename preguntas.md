@@ -38,7 +38,7 @@ SELECT
     codigo_ticket,
     fecha,
     id_prioridad,
-    id_equipo
+    id_categoria
 FROM modelado.Ticket
 WHERE estado = 1
   AND fecha >= '2026-09-29'
@@ -258,12 +258,12 @@ INNER JOIN
 ```sql
 WITH carga AS (
     SELECT
-        id_equipo,
-        id_asignatario,
+        t.id_equipo,
+        t.id_asignatario,
         COUNT(*) AS tickets
-    FROM modelado.Ticket
-    WHERE id_asignatario IS NOT NULL
-    GROUP BY id_equipo, id_asignatario
+    FROM modelado.Ticket t
+    WHERE t.id_asignatario IS NOT NULL
+    GROUP BY t.id_equipo, t.id_asignatario
 ),
 ranking AS (
     SELECT

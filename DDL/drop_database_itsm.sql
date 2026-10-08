@@ -5,7 +5,9 @@
 DROP TABLE IF EXISTS modelado.Transicion;
 DROP TABLE IF EXISTS modelado.Comentario;
 DROP TABLE IF EXISTS modelado.Ticket;
+DROP TABLE IF EXISTS modelado.TransicionPermitida;
 DROP TABLE IF EXISTS modelado.EstadoTransicion;
+DROP TABLE IF EXISTS modelado.EquipoServicio;
 DROP TABLE IF EXISTS modelado.Servicio;
 DROP TABLE IF EXISTS modelado.TipoTicket;
 DROP TABLE IF EXISTS modelado.Prioridad;

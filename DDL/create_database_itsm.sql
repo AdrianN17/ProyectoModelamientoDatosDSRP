@@ -26,7 +26,7 @@ GO
 CREATE TABLE modelado.Equipo
 (
     id_equipo INT NOT NULL,
-    descripcion VARCHAR(20) NULL,
+    descripcion VARCHAR(50) NULL,
     estado INT NULL,
 
     CONSTRAINT PK_Equipo PRIMARY KEY (id_equipo),
@@ -112,20 +112,39 @@ CREATE TABLE modelado.Servicio
 (
     id_servicio INT NOT NULL,
     descripcion VARCHAR(50) NULL,
-    id_equipo INT NULL,
     estado INT NULL,
 
     CONSTRAINT PK_Servicio PRIMARY KEY (id_servicio),
-    CONSTRAINT CK_Servicio_estado CHECK (estado IN (0, 1)),
-
-    CONSTRAINT FK_Servicio_Equipo
-        FOREIGN KEY (id_equipo)
-        REFERENCES modelado.Equipo (id_equipo)
+    CONSTRAINT CK_Servicio_estado CHECK (estado IN (0, 1))
 );
 GO
 
 -- ============================================================
--- 8. TABLA: EstadoTransicion
+-- 8. TABLA: EquipoServicio (relacion Equipo - Servicio)
+-- ============================================================
+CREATE TABLE modelado.EquipoServicio
+(
+    id_equipo_servicio INT NOT NULL,
+    id_equipo INT NOT NULL,
+    id_servicio INT NOT NULL,
+    estado INT NULL,
+
+    CONSTRAINT PK_EquipoServicio PRIMARY KEY (id_equipo_servicio),
+    CONSTRAINT UQ_EquipoServicio_equipo_servicio UNIQUE (id_equipo, id_servicio),
+    CONSTRAINT CK_EquipoServicio_estado CHECK (estado IN (0, 1)),
+
+    CONSTRAINT FK_EquipoServicio_Equipo
+        FOREIGN KEY (id_equipo)
+        REFERENCES modelado.Equipo (id_equipo),
+
+    CONSTRAINT FK_EquipoServicio_Servicio
+        FOREIGN KEY (id_servicio)
+        REFERENCES modelado.Servicio (id_servicio)
+);
+GO
+
+-- ============================================================
+-- 9. TABLA: EstadoTransicion
 -- ============================================================
 CREATE TABLE modelado.EstadoTransicion
 (
@@ -139,7 +158,33 @@ CREATE TABLE modelado.EstadoTransicion
 GO
 
 -- ============================================================
--- 9. TABLA: Ticket
+-- 9.1 TABLA: TransicionPermitida
+-- ============================================================
+CREATE TABLE modelado.TransicionPermitida
+(
+    id_transicion_permitida INT NOT NULL,
+    id_estado_antes INT NOT NULL,
+    id_estado_despues INT NOT NULL,
+    estado INT NOT NULL,
+
+    CONSTRAINT PK_TransicionPermitida PRIMARY KEY (id_transicion_permitida),
+    CONSTRAINT CK_TransicionPermitida_estado CHECK (estado IN (0, 1)),
+
+    CONSTRAINT FK_TransicionPermitida_EstadoAntes
+        FOREIGN KEY (id_estado_antes)
+        REFERENCES modelado.EstadoTransicion (id_estado_transicion),
+
+    CONSTRAINT FK_TransicionPermitida_EstadoDespues
+        FOREIGN KEY (id_estado_despues)
+        REFERENCES modelado.EstadoTransicion (id_estado_transicion),
+
+    CONSTRAINT UQ_TransicionPermitida
+        UNIQUE (id_estado_antes, id_estado_despues)
+);
+GO
+
+-- ============================================================
+-- 10. TABLA: Ticket
 -- ============================================================
 CREATE TABLE modelado.Ticket
 (
@@ -149,11 +194,13 @@ CREATE TABLE modelado.Ticket
     fecha DATETIME NULL,
     estado INT NULL,
     id_usuario INT NULL,
-    id_equipo INT NULL,
     id_asignatario INT NULL,
     id_categoria INT NULL,
+    id_equipo INT NULL,
     id_servicio INT NULL,
     id_tipo INT NULL,
+    resumen VARCHAR(100) NULL,
+    descripcion TEXT NULL,
 
     CONSTRAINT PK_Ticket PRIMARY KEY (id_ticket),
     CONSTRAINT CK_Ticket_estado CHECK (estado IN (0, 1)),
@@ -165,10 +212,6 @@ CREATE TABLE modelado.Ticket
     CONSTRAINT FK_Ticket_Usuario
         FOREIGN KEY (id_usuario)
         REFERENCES modelado.Usuario (id_usuario),
-
-    CONSTRAINT FK_Ticket_Equipo
-        FOREIGN KEY (id_equipo)
-        REFERENCES modelado.Equipo (id_equipo),
 
     CONSTRAINT FK_Ticket_Asignatario
         FOREIGN KEY (id_asignatario)
@@ -182,6 +225,11 @@ CREATE TABLE modelado.Ticket
         FOREIGN KEY (id_servicio)
         REFERENCES modelado.Servicio (id_servicio),
 
+    -- El equipo debe dar soporte al servicio del ticket
+    CONSTRAINT FK_Ticket_EquipoServicio
+        FOREIGN KEY (id_equipo, id_servicio)
+        REFERENCES modelado.EquipoServicio (id_equipo, id_servicio),
+
     CONSTRAINT FK_Ticket_TipoTicket
         FOREIGN KEY (id_tipo)
         REFERENCES modelado.TipoTicket (id_tipo_ticket)
@@ -189,7 +237,7 @@ CREATE TABLE modelado.Ticket
 GO
 
 -- ============================================================
--- 10. TABLA: Comentario
+-- 11. TABLA: Comentario
 -- ============================================================
 CREATE TABLE modelado.Comentario
 (
@@ -213,7 +261,7 @@ CREATE TABLE modelado.Comentario
 GO
 
 -- ============================================================
--- 11. TABLA: Transicion
+-- 12. TABLA: Transicion
 -- ============================================================
 CREATE TABLE modelado.Transicion
 (
@@ -243,6 +291,11 @@ CREATE TABLE modelado.Transicion
 
     CONSTRAINT FK_Transicion_EstadoDespues
         FOREIGN KEY (id_transicion_despues)
-        REFERENCES modelado.EstadoTransicion (id_estado_transicion)
+        REFERENCES modelado.EstadoTransicion (id_estado_transicion),
+
+    -- Solo se permiten cambios de estado definidos en TransicionPermitida
+    CONSTRAINT FK_Transicion_TransicionPermitida
+        FOREIGN KEY (id_transicion_antes, id_transicion_despues)
+        REFERENCES modelado.TransicionPermitida (id_estado_antes, id_estado_despues)
 );
 GO
