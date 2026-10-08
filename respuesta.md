@@ -33,7 +33,6 @@ Resultados de las consultas de [preguntas.md](./preguntas.md) con los datos de `
 | Accesos y Permisos | 1 |
 | Redes y Comunicaciones | 1 |
 | Seguridad de la Informacion | 1 |
-| Telefonia y Videoconferencia | 0 |
 
 ## Pregunta 4 — Carga de trabajo por equipo (2 o más tickets)
 

@@ -48,6 +48,8 @@ CREATE TABLE modelado.Usuario
     id_equipo INT NULL,
 
     CONSTRAINT PK_Usuario PRIMARY KEY (id_usuario),
+    -- Necesario para que Ticket pueda referenciar (usuario, equipo) como par
+    CONSTRAINT UQ_Usuario_usuario_equipo UNIQUE (id_usuario, id_equipo),
     CONSTRAINT CK_Usuario_estado CHECK (estado IN (0, 1)),
 
     CONSTRAINT FK_Usuario_Rol
@@ -205,6 +207,19 @@ CREATE TABLE modelado.Ticket
     CONSTRAINT FK_Ticket_Asignatario
         FOREIGN KEY (id_asignatario)
         REFERENCES modelado.Usuario (id_usuario),
+
+    -- El asignatario debe pertenecer al equipo del ticket
+    CONSTRAINT FK_Ticket_AsignatarioEquipo
+        FOREIGN KEY (id_asignatario, id_equipo)
+        REFERENCES modelado.Usuario (id_usuario, id_equipo),
+
+    -- Un ticket asignado debe tener equipo (la FK compuesta no valida si id_equipo es NULL)
+    CONSTRAINT CK_Ticket_asignatario_equipo
+        CHECK (id_asignatario IS NULL OR id_equipo IS NOT NULL),
+
+    -- Un ticket con equipo debe tener servicio (la FK compuesta no valida si id_servicio es NULL)
+    CONSTRAINT CK_Ticket_equipo_servicio
+        CHECK (id_equipo IS NULL OR id_servicio IS NOT NULL),
 
     CONSTRAINT FK_Ticket_Categoria
         FOREIGN KEY (id_categoria)

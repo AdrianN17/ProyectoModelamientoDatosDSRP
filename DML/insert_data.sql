@@ -84,8 +84,7 @@ VALUES
     (3, 'Redes y Comunicaciones', 1),
     (4, 'Seguridad de la Informacion', 1),
     (5, 'Accesos y Permisos', 1),
-    (6, 'Infraestructura', 1),
-    (7, 'Telefonia y Videoconferencia', 1);
+    (6, 'Infraestructura', 1);
 
 -- Prioridad
 INSERT INTO modelado.Prioridad (id_prioridad, descripcion, estado)
