@@ -38,7 +38,7 @@ SELECT
     codigo_ticket,
     fecha,
     id_prioridad,
-    id_categoria
+    id_equipo
 FROM modelado.Ticket
 WHERE estado = 1
   AND fecha >= '2026-09-29'
@@ -56,6 +56,8 @@ TicketsInactivos
 PrimerTicket   (fecha más antigua)
 UltimoTicket   (fecha más reciente)
 ```
+
+Con los datos actuales: `9, 9, 0, 2026-09-28 08:15, 2026-10-04 10:00`.
 
 ### Conceptos
 
@@ -88,16 +90,18 @@ Determinar cuántos tickets tiene cada categoría. Deben aparecer **también las
 Resultado esperado:
 
 ```text
-Categoria            CantidadTickets
--------------------- ---------------
-Aplicaciones         ...
-Seguridad de la Informacion ...
-Telefonia y Videoconferencia 0
-Licencias de Software 0
-...
+Categoria                     CantidadTickets
+----------------------------- ---------------
+Aplicaciones                  2
+Base de Datos                 2
+Infraestructura               2
+Accesos y Permisos            1
+Redes y Comunicaciones        1
+Seguridad de la Informacion   1
+Telefonia y Videoconferencia  0
 ```
 
-Ordenar de mayor a menor cantidad de tickets.
+Ordenar de mayor a menor cantidad de tickets y, en caso de empate, por nombre de categoría.
 
 ### Conceptos
 
@@ -118,7 +122,7 @@ FROM modelado.Categoria c
 LEFT JOIN modelado.Ticket t
        ON t.id_categoria = c.id_categoria
 GROUP BY c.descripcion
-ORDER BY CantidadTickets DESC;
+ORDER BY CantidadTickets DESC, Categoria;
 ```
 
 ## Pregunta 4 — Carga de trabajo por equipo
@@ -130,12 +134,13 @@ Resultado esperado:
 ```text
 Equipo              CantidadTickets  AsignatariosDistintos
 ------------------- ---------------  ---------------------
-Canales Digitales   ...              ...
-Core Bancario       ...              ...
-...
+Canales Digitales   2                1
+Cloud               2                1
+Core Bancario       2                1
+Seguridad           2                1
 ```
 
-Ordenar de mayor a menor cantidad de tickets.
+Ordenar de mayor a menor cantidad de tickets y, en caso de empate, por nombre de equipo. Devops (1 ticket) no aparece por el `HAVING`.
 
 ### Conceptos
 
@@ -160,7 +165,7 @@ INNER JOIN modelado.Equipo e
         ON e.id_equipo = t.id_equipo
 GROUP BY e.descripcion
 HAVING COUNT(*) >= 2
-ORDER BY CantidadTickets DESC;
+ORDER BY CantidadTickets DESC, Equipo;
 ```
 
 ---
@@ -176,10 +181,17 @@ Resultado esperado:
 ```text
 CodigoTicket  EstadoAntes   EstadoDespues  Minutos   Ranking
 ------------  -----------   -------------  -------   -------
-TKT-00001     En Progreso   Resuelto       155       1
-TKT-00002     En Progreso   En Espera      325       1
-...
+TKT-00001     Resuelto      Cerrado        3960      1
+TKT-00002     Resuelto      Cerrado        1300      1
+TKT-00003     En Espera     En Progreso    1290      1
+TKT-00004     Asignado      En Progreso    40        1
+TKT-00006     Asignado      Cancelado      130       1
+TKT-00007     Asignado      En Espera      100       1
+TKT-00008     Resuelto      Cerrado        4290      1
+TKT-00009     En Progreso   Cancelado      1345      1
 ```
+
+El `TKT-00005` no aparece porque no tiene transiciones (sigue en estado Nuevo).
 
 Mostrar únicamente el **mayor tiempo por ticket** (Ranking = 1).
 
@@ -238,10 +250,14 @@ Resultado esperado:
 ```text
 Equipo              Asignatario       Tickets  PctDelEquipo  Ranking
 ------------------- ----------------  -------  ------------  -------
-Canales Digitales   Lucia Fernandez   ...      ...           1
-Core Bancario       Jorge Ramirez     ...      ...           1
-...
+Canales Digitales   Diego Herrera     1        100.00        1
+Cloud               Jorge Ramirez     2        100.00        1
+Core Bancario       Ricardo Paredes   2        100.00        1
+Devops              Andrea Salazar    1        100.00        1
+Seguridad           Sofia Quispe      2        100.00        1
 ```
+
+Cada equipo tiene un solo asignatario, por eso el porcentaje es 100 en todos los casos. El ticket sin asignatario (`TKT-00005`) se excluye.
 
 ### Conceptos
 
@@ -311,6 +327,7 @@ Baja        72 horas
 ```text
 Tiempo de resolución = fecha de la transición a "Resuelto" - fecha de creación del ticket
 Ticket sin transición a "Resuelto" = "Sin resolver"
+Ticket con alguna transición a "Cancelado" = se excluye del análisis de SLA
 ```
 
 ### Preguntas a responder
@@ -375,6 +392,12 @@ base AS (
     FROM modelado.Ticket t
     INNER JOIN modelado.Prioridad p ON p.id_prioridad = t.id_prioridad
     LEFT JOIN resolucion r          ON r.id_ticket = t.id_ticket
+    WHERE NOT EXISTS (                       -- 7 = Cancelado
+        SELECT 1
+        FROM modelado.Transicion c
+        WHERE c.id_ticket = t.id_ticket
+          AND c.id_transicion_despues = 7
+    )
 )
 SELECT
     *,
@@ -458,3 +481,34 @@ SELECT
 FROM por_equipo
 ORDER BY Problemas DESC, Equipo;
 ```
+
+### Resultado con los datos actuales
+
+Se analizan 7 tickets (los cancelados `TKT-00006` y `TKT-00009` quedan fuera).
+
+```text
+Resultado por ticket (Paso 2)
+CodigoTicket  Prioridad  SLA(min)  Resolucion(min)  Resultado
+------------  ---------  --------  ---------------  ------------
+TKT-00001     Critica    240       405              Incumple
+TKT-00003     Critica    240       1735             Incumple
+TKT-00008     Critica    240       1020             Incumple
+TKT-00002     Alta       480       110              Cumple
+TKT-00007     Alta       480       NULL             Sin resolver
+TKT-00004     Media      1440      NULL             Sin resolver
+TKT-00005     Baja       4320      NULL             Sin resolver
+
+Cumplimiento por prioridad: Critica 0%, Alta 50%, Media 0%, Baja 0%.
+Asignatarios con tickets sin resolver (Paso 4): Jorge Ramirez 1, Sofia Quispe 1 (Ranking 1 ambos).
+TKT-00005 no tiene asignatario, por eso no aparece en el Paso 4.
+
+Concentracion de problemas (Paso 5)
+Equipo             Problemas  PctDelTotal  PctAcumulado
+-----------------  ---------  -----------  ------------
+Cloud              2          33.33        33.33
+Seguridad          2          33.33        66.67
+Canales Digitales  1          16.67        83.33
+Core Bancario      1          16.67        100.00
+```
+
+Ningún equipo explica por sí solo más de la mitad de los problemas; Cloud y Seguridad juntos concentran el 66.67%.

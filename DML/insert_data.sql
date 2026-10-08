@@ -10,7 +10,6 @@ VALUES
     (2, 'Team Leader', 1),
     (3, 'Operador', 1),
     (4, 'Proveedor', 1);
-GO
 
 -- Equipo
 INSERT INTO modelado.Equipo (id_equipo, descripcion, estado)
@@ -20,7 +19,6 @@ VALUES
     (3, 'Seguridad', 1),
     (5, 'Devops', 1),
     (6, 'Cloud', 1);
-GO
 
 -- Servicio
 INSERT INTO modelado.Servicio (id_servicio, descripcion, estado)
@@ -31,7 +29,6 @@ VALUES
     (4, 'Azure', 1),
     (5, 'Onpremise', 1),
     (6, 'Accesos', 1);
-GO
 
 -- EquipoServicio (equipos que dan soporte a cada servicio)
 INSERT INTO modelado.EquipoServicio (id_equipo_servicio, id_equipo, id_servicio, estado)
@@ -54,7 +51,6 @@ VALUES
     (8, 2, 5, 1),
     -- Seguridad -> Azure
     (9, 3, 4, 1);
-GO
 
 -- TipoTicket
 INSERT INTO modelado.TipoTicket (id_tipo_ticket, descripcion, estado)
@@ -63,7 +59,6 @@ VALUES
     (2, 'Requerimiento', 1),
     (3, 'Problema', 1),
     (4, 'Cambio', 1);
-GO
 
 -- Usuario
 -- cod_asignatario informado = puede ser asignatario de tickets (Operadores)
@@ -80,7 +75,6 @@ VALUES
     (8,  'USR0008', 'Sofia',    'Quispe',    'squispe@bancoandino.com',    '51987654328', 3, 1, 'ASG0008', 3),
     (9,  'USR0009', 'Diego',    'Herrera',   'dherrera@bancoandino.com',   '51987654329', 3, 1, 'ASG0009', 1),
     (10, 'USR0010', 'Patricia', 'Luna',      'pluna@procesadorpagos.com',  '51987654330', 4, 1, NULL,      NULL);
-GO
 
 -- Categoria
 INSERT INTO modelado.Categoria (id_categoria, descripcion, estado)
@@ -90,8 +84,8 @@ VALUES
     (3, 'Redes y Comunicaciones', 1),
     (4, 'Seguridad de la Informacion', 1),
     (5, 'Accesos y Permisos', 1),
-    (6, 'Infraestructura', 1);
-GO
+    (6, 'Infraestructura', 1),
+    (7, 'Telefonia y Videoconferencia', 1);
 
 -- Prioridad
 INSERT INTO modelado.Prioridad (id_prioridad, descripcion, estado)
@@ -100,7 +94,6 @@ VALUES
     (2, 'Alta', 1),
     (3, 'Media', 1),
     (4, 'Baja', 1);
-GO
 
 -- EstadoTransicion
 INSERT INTO modelado.EstadoTransicion (id_estado_transicion, descripcion, estado)
@@ -112,7 +105,6 @@ VALUES
     (5, 'Resuelto', 1),
     (6, 'Cerrado', 1),
     (7, 'Cancelado', 1);
-GO
 
 -- TransicionPermitida
 INSERT INTO modelado.TransicionPermitida
@@ -134,7 +126,6 @@ VALUES
     (11, 4, 3, 1), -- En Espera -> En Progreso
     (12, 4, 2, 1), -- En Espera -> Asignado
     (13, 5, 6, 1); -- Resuelto -> Cerrado
-GO
 
 -- Ticket
 -- Usuarios: Carlos 1, Lucia (TL) 2, Jorge (Op. Cloud) 3, Valeria 4, Miguel (TL Devops) 5,
@@ -172,7 +163,6 @@ VALUES
     (9, 'TKT-00009', 3, '2026-10-04T10:00:00', 1, 1, 7, 2, 5, 2, 2,
         'Solicitud de backup adicional de base de datos onpremise',
         'Se solicita un respaldo adicional previo al pase a produccion del fin de semana.');
-GO
 
 -- Comentario
 INSERT INTO modelado.Comentario (id_comentario, texto, id_usuario, id_ticket, estado)
@@ -198,7 +188,6 @@ VALUES
     (19, 'Se bloquea la IP y se rotan los secretos.', 8, 8, 1),
     (20, 'Se cierra el ticket tras confirmar que no hubo accesos adicionales.', 8, 8, 1),
     (21, 'Se cancela, el respaldo fue atendido por el proceso estandar.', 7, 9, 1);
-GO
 
 -- Transicion (historial de estados; todas deben existir en TransicionPermitida)
 -- Estados: 1 Nuevo, 2 Asignado, 3 En Progreso, 4 En Espera, 5 Resuelto, 6 Cerrado, 7 Cancelado
@@ -250,4 +239,3 @@ VALUES
     (26, 2,  9, '2026-10-04T10:05:00', 1, 2, 1),
     (27, 7,  9, '2026-10-04T10:20:00', 2, 3, 1),
     (28, 7,  9, '2026-10-05T08:45:00', 3, 7, 1);
-GO

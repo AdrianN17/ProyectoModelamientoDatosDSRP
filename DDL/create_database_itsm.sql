@@ -3,7 +3,6 @@
 -- ============================================================
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'modelado')
     EXEC('CREATE SCHEMA modelado');
-GO
 
 -- ============================================================
 -- 1. TABLA: Rol
@@ -18,7 +17,6 @@ CREATE TABLE modelado.Rol
     CONSTRAINT UQ_Rol_nombre UNIQUE (nombre),
     CONSTRAINT CK_Rol_estado CHECK (estado IN (0, 1)) -- 1 = Activo, 0 = Inactivo
 );
-GO
 
 -- ============================================================
 -- 2. TABLA: Equipo
@@ -32,7 +30,6 @@ CREATE TABLE modelado.Equipo
     CONSTRAINT PK_Equipo PRIMARY KEY (id_equipo),
     CONSTRAINT CK_Equipo_estado CHECK (estado IN (0, 1))
 );
-GO
 
 -- ============================================================
 -- 3. TABLA: Usuario
@@ -61,7 +58,6 @@ CREATE TABLE modelado.Usuario
         FOREIGN KEY (id_equipo)
         REFERENCES modelado.Equipo (id_equipo)
 );
-GO
 
 -- ============================================================
 -- 4. TABLA: Categoria
@@ -75,7 +71,6 @@ CREATE TABLE modelado.Categoria
     CONSTRAINT PK_Categoria PRIMARY KEY (id_categoria),
     CONSTRAINT CK_Categoria_estado CHECK (estado IN (0, 1))
 );
-GO
 
 -- ============================================================
 -- 5. TABLA: Prioridad
@@ -89,7 +84,6 @@ CREATE TABLE modelado.Prioridad
     CONSTRAINT PK_Prioridad PRIMARY KEY (id_prioridad),
     CONSTRAINT CK_Prioridad_estado CHECK (estado IN (0, 1))
 );
-GO
 
 -- ============================================================
 -- 6. TABLA: TipoTicket
@@ -103,7 +97,6 @@ CREATE TABLE modelado.TipoTicket
     CONSTRAINT PK_TipoTicket PRIMARY KEY (id_tipo_ticket),
     CONSTRAINT CK_TipoTicket_estado CHECK (estado IN (0, 1))
 );
-GO
 
 -- ============================================================
 -- 7. TABLA: Servicio
@@ -117,7 +110,6 @@ CREATE TABLE modelado.Servicio
     CONSTRAINT PK_Servicio PRIMARY KEY (id_servicio),
     CONSTRAINT CK_Servicio_estado CHECK (estado IN (0, 1))
 );
-GO
 
 -- ============================================================
 -- 8. TABLA: EquipoServicio (relacion Equipo - Servicio)
@@ -141,7 +133,6 @@ CREATE TABLE modelado.EquipoServicio
         FOREIGN KEY (id_servicio)
         REFERENCES modelado.Servicio (id_servicio)
 );
-GO
 
 -- ============================================================
 -- 9. TABLA: EstadoTransicion
@@ -155,7 +146,6 @@ CREATE TABLE modelado.EstadoTransicion
     CONSTRAINT PK_EstadoTransicion PRIMARY KEY (id_estado_transicion),
     CONSTRAINT CK_EstadoTransicion_estado CHECK (estado IN (0, 1))
 );
-GO
 
 -- ============================================================
 -- 9.1 TABLA: TransicionPermitida
@@ -181,7 +171,6 @@ CREATE TABLE modelado.TransicionPermitida
     CONSTRAINT UQ_TransicionPermitida
         UNIQUE (id_estado_antes, id_estado_despues)
 );
-GO
 
 -- ============================================================
 -- 10. TABLA: Ticket
@@ -234,7 +223,6 @@ CREATE TABLE modelado.Ticket
         FOREIGN KEY (id_tipo)
         REFERENCES modelado.TipoTicket (id_tipo_ticket)
 );
-GO
 
 -- ============================================================
 -- 11. TABLA: Comentario
@@ -258,7 +246,6 @@ CREATE TABLE modelado.Comentario
         FOREIGN KEY (id_ticket)
         REFERENCES modelado.Ticket (id_ticket)
 );
-GO
 
 -- ============================================================
 -- 12. TABLA: Transicion
@@ -298,4 +285,3 @@ CREATE TABLE modelado.Transicion
         FOREIGN KEY (id_transicion_antes, id_transicion_despues)
         REFERENCES modelado.TransicionPermitida (id_estado_antes, id_estado_despues)
 );
-GO
