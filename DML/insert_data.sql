@@ -42,14 +42,15 @@ GO
 -- Categoria
 INSERT INTO modelado.Categoria (id_categoria, descripcion, estado)
 VALUES
-    (1, 'Tarjetas', 1),
-    (2, 'Transferencias', 1),
-    (3, 'Banca Movil', 1),
-    (4, 'Banca por Internet', 1),
-    (5, 'Cajeros Automaticos', 1),
-    (6, 'Prestamos', 1),
-    (7, 'Seguridad', 1),
-    (8, 'Chequeras', 0);
+    (1, 'Aplicaciones', 1),
+    (2, 'Base de Datos', 1),
+    (3, 'Redes y Comunicaciones', 1),
+    (4, 'Seguridad de la Informacion', 1),
+    (5, 'Hardware y Perifericos', 1),
+    (6, 'Accesos y Permisos', 1),
+    (7, 'Procesos Batch', 1),
+    (8, 'Telefonia y Videoconferencia', 1),
+    (9, 'Licencias de Software', 0);
 GO
 
 -- Prioridad
@@ -101,16 +102,16 @@ GO
 INSERT INTO modelado.Ticket
     (id_ticket, codigo_ticket, id_prioridad, fecha, estado, id_usuario, id_equipo, id_asignatario, id_categoria, id_servicio, id_tipo)
 VALUES
-    (1,  'TKT-00001', 1, '2026-09-28T08:15:00', 1, 6, 1, 2, 3, 1,  1),
-    (2,  'TKT-00002', 2, '2026-09-28T09:40:00', 1, 7, 2, 3, 2, 3,  1),
-    (3,  'TKT-00003', 3, '2026-09-29T10:05:00', 0, 8, 3, 4, 7, 6,  1),
+    (1,  'TKT-00001', 1, '2026-09-28T08:15:00', 1, 6, 1, 2, 1, 1,  1),
+    (2,  'TKT-00002', 2, '2026-09-28T09:40:00', 1, 7, 2, 3, 1, 3,  1),
+    (3,  'TKT-00003', 3, '2026-09-29T10:05:00', 0, 8, 3, 4, 4, 6,  1),
     (4,  'TKT-00004', 2, '2026-09-29T11:30:00', 1, 6, 4, 5, 5, 8,  1),
-    (5,  'TKT-00005', 3, '2026-09-30T14:20:00', 1, 7, 1, 1, 4, 2,  2),
-    (6,  'TKT-00006', 4, '2026-09-30T15:45:00', 1, 9, 4, 5, 5, 7,  4),
-    (7,  'TKT-00007', 1, '2026-10-01T07:50:00', 1, 6, 2, 3, 2, 4,  3),
-    (8,  'TKT-00008', 2, '2026-10-01T13:10:00', 1, 7, 3, 4, 7, 5,  2),
-    (9,  'TKT-00009', 3, '2026-10-02T09:00:00', 1, 8, 1, 2, 3, 1,  4),
-    (10, 'TKT-00010', 4, '2026-10-02T16:25:00', 0, 6, 5, 1, 1, 10, 2);
+    (5,  'TKT-00005', 3, '2026-09-30T14:20:00', 1, 7, 1, 1, 1, 2,  2),
+    (6,  'TKT-00006', 4, '2026-09-30T15:45:00', 1, 9, 4, 5, 3, 7,  4),
+    (7,  'TKT-00007', 1, '2026-10-01T07:50:00', 1, 6, 2, 3, 7, 4,  3),
+    (8,  'TKT-00008', 2, '2026-10-01T13:10:00', 1, 7, 3, 4, 2, 5,  2),
+    (9,  'TKT-00009', 3, '2026-10-02T09:00:00', 1, 8, 1, 2, 1, 1,  4),
+    (10, 'TKT-00010', 4, '2026-10-02T16:25:00', 0, 6, 5, 1, 6, 10, 2);
 GO
 
 -- Comentario

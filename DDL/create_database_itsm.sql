@@ -69,7 +69,7 @@ GO
 CREATE TABLE modelado.Categoria
 (
     id_categoria INT NOT NULL,
-    descripcion VARCHAR(20) NULL,
+    descripcion VARCHAR(50) NULL,
     estado INT NULL,
 
     CONSTRAINT PK_Categoria PRIMARY KEY (id_categoria),
