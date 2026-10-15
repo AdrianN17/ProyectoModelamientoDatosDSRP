@@ -2,6 +2,8 @@
 
 Preguntas basadas en el modelo `modelado` (Azure SQL), replicando la dificultad y los comandos de cada nivel del laboratorio de ejemplo.
 
+Las soluciones en SQL están en [respuesta.md](./respuesta.md).
+
 
 ---
 
@@ -31,20 +33,6 @@ WHERE
 ORDER BY
 ```
 
-### SQL
-
-```sql
-SELECT
-    codigo_ticket,
-    fecha,
-    id_prioridad,
-    id_equipo
-FROM modelado.Ticket
-WHERE estado = 1
-  AND fecha >= '2026-09-29'
-ORDER BY fecha DESC;
-```
-
 ## Pregunta 2 — Resumen general de tickets
 
 Obtener en una sola fila:
@@ -65,18 +53,6 @@ Con los datos actuales: `9, 9, 0, 2026-09-28 08:15, 2026-10-04 10:00`.
 COUNT()
 MIN()
 MAX()
-```
-
-### SQL
-
-```sql
-SELECT
-    COUNT(*)                                  AS TotalTickets,
-    COUNT(CASE WHEN estado = 1 THEN 1 END)    AS TicketsActivos,
-    COUNT(CASE WHEN estado = 0 THEN 1 END)    AS TicketsInactivos,
-    MIN(fecha)                                AS PrimerTicket,
-    MAX(fecha)                                AS UltimoTicket
-FROM modelado.Ticket;
 ```
 
 ---
@@ -112,19 +88,6 @@ COUNT()
 ORDER BY
 ```
 
-### SQL
-
-```sql
-SELECT
-    c.descripcion      AS Categoria,
-    COUNT(t.id_ticket) AS CantidadTickets
-FROM modelado.Categoria c
-LEFT JOIN modelado.Ticket t
-       ON t.id_categoria = c.id_categoria
-GROUP BY c.descripcion
-ORDER BY CantidadTickets DESC, Categoria;
-```
-
 ## Pregunta 4 — Carga de trabajo por equipo
 
 Determinar cuántos tickets tiene cada equipo y cuántos asignatarios distintos los atienden. Mostrar **solo los equipos con 2 o más tickets**.
@@ -151,21 +114,6 @@ COUNT()
 COUNT(DISTINCT)
 HAVING
 ORDER BY
-```
-
-### SQL
-
-```sql
-SELECT
-    e.descripcion                  AS Equipo,
-    COUNT(*)                       AS CantidadTickets,
-    COUNT(DISTINCT t.id_asignatario) AS AsignatariosDistintos
-FROM modelado.Ticket t
-INNER JOIN modelado.Equipo e
-        ON e.id_equipo = t.id_equipo
-GROUP BY e.descripcion
-HAVING COUNT(*) >= 2
-ORDER BY CantidadTickets DESC, Equipo;
 ```
 
 ---
@@ -205,42 +153,6 @@ ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...)
 INNER JOIN (doble join a EstadoTransicion)
 ```
 
-### SQL
-
-```sql
-WITH tiempos AS (
-    SELECT
-        tr.id_ticket,
-        tr.id_transicion_antes,
-        tr.id_transicion_despues,
-        DATEDIFF(
-            MINUTE,
-            LAG(tr.fecha) OVER (PARTITION BY tr.id_ticket ORDER BY tr.fecha),
-            tr.fecha
-        ) AS minutos
-    FROM modelado.Transicion tr
-),
-ranking AS (
-    SELECT
-        *,
-        ROW_NUMBER() OVER (PARTITION BY id_ticket ORDER BY minutos DESC) AS ranking
-    FROM tiempos
-    WHERE minutos IS NOT NULL  
-)
-SELECT
-    t.codigo_ticket  AS CodigoTicket,
-    ea.descripcion   AS EstadoAntes,
-    ed.descripcion   AS EstadoDespues,
-    r.minutos        AS Minutos,
-    r.ranking        AS Ranking
-FROM ranking r
-INNER JOIN modelado.Ticket t             ON t.id_ticket = r.id_ticket
-INNER JOIN modelado.EstadoTransicion ea  ON ea.id_estado_transicion = r.id_transicion_antes
-INNER JOIN modelado.EstadoTransicion ed  ON ed.id_estado_transicion = r.id_transicion_despues
-WHERE r.ranking = 1
-ORDER BY t.codigo_ticket;
-```
-
 ## Pregunta 6 — Asignatario más cargado de cada equipo
 
 Para cada equipo, determinar qué asignatario atiende más tickets y qué porcentaje de los tickets del equipo representa. Si hay empate, deben aparecer todos los empatados.
@@ -269,36 +181,184 @@ DENSE_RANK() OVER (PARTITION BY ... ORDER BY ...)
 INNER JOIN
 ```
 
-### SQL
+---
+
+# 🟣 NIVEL PROGRAMABILIDAD — Procedimientos y Funciones
+
+> Las preguntas 7, 8 y 9 se resuelven en orden: la 9 reutiliza los objetos creados en la 8.
+> Los ejemplos de ejecución usan `BEGIN TRAN ... ROLLBACK` para no alterar los datos de las demás preguntas.
+
+## Pregunta 7 — Procedimiento almacenado: cambiar el estado de un ticket con validaciones
+
+Hoy cualquier usuario puede insertar directamente en `modelado.Transicion`. Crear el procedimiento `modelado.usp_CambiarEstadoTicket` que registre un cambio de estado de forma controlada.
+
+Parámetros:
+
+```text
+@id_ticket        INT
+@id_usuario       INT       (quien realiza el cambio)
+@id_estado_nuevo  INT
+@fecha            DATETIME  (opcional; si no se envía, usar la fecha actual)
+```
+
+Reglas:
+
+```text
+1. El ticket debe existir y estar activo (estado = 1).         -> error 50001
+2. El usuario debe existir y estar activo.                      -> error 50002
+3. El estado actual del ticket es el destino de su última transición;
+   si no tiene transiciones, el estado actual es 1 (Nuevo).
+4. El cambio (estado actual -> estado nuevo) debe existir y estar activo
+   en TransicionPermitida.                                      -> error 50003
+5. El id_transicion no es IDENTITY: debe calcularse como MAX + 1 sin que dos
+   ejecuciones simultáneas obtengan el mismo valor.
+6. Al registrar el cambio, el procedimiento devuelve la fila insertada.
+```
+
+Probar dentro de una transacción que luego se revierte:
+
+1. `TKT-00005` (id 5, estado actual *Nuevo*) pasa a *Asignado* (id 2), realizado por la usuaria 2 el `2026-10-06 09:00`.
+2. `TKT-00004` (id 4, estado actual *En Progreso*) intenta pasar directamente a *Cerrado* (id 6).
+
+Resultado esperado:
+
+```text
+-- Llamada 1 (cambio válido): devuelve la fila insertada
+id_transicion  id_ticket  id_usuario  fecha                    id_transicion_antes  id_transicion_despues  estado
+-------------  ---------  ----------  -----------------------  -------------------  ---------------------  ------
+29             5          2           2026-10-06 09:00:00.000  1                    2                      1
+
+-- Llamada 2 (cambio no permitido): se captura el error
+ErrorNumero  ErrorMensaje
+-----------  ----------------------------------------------------------------------------------
+50003        La transicion solicitada no esta permitida desde el estado actual del ticket.
+
+-- Después del ROLLBACK
+TotalTransiciones
+-----------------
+28
+```
+
+### Conceptos
 
 ```sql
-WITH carga AS (
-    SELECT
-        t.id_equipo,
-        t.id_asignatario,
-        COUNT(*) AS tickets
-    FROM modelado.Ticket t
-    WHERE t.id_asignatario IS NOT NULL
-    GROUP BY t.id_equipo, t.id_asignatario
-),
-ranking AS (
-    SELECT
-        *,
-        SUM(tickets) OVER (PARTITION BY id_equipo) AS total_equipo,
-        DENSE_RANK() OVER (PARTITION BY id_equipo ORDER BY tickets DESC) AS ranking
-    FROM carga
-)
-SELECT
-    e.descripcion               AS Equipo,
-    u.nombre + ' ' + u.apellido AS Asignatario,
-    r.tickets                   AS Tickets,
-    CAST(100.0 * r.tickets / r.total_equipo AS DECIMAL(5,2)) AS PctDelEquipo,
-    r.ranking                   AS Ranking
-FROM ranking r
-INNER JOIN modelado.Equipo e  ON e.id_equipo  = r.id_equipo
-INNER JOIN modelado.Usuario u ON u.id_usuario = r.id_asignatario
-WHERE r.ranking = 1
-ORDER BY e.descripcion, Asignatario;
+CREATE OR ALTER PROCEDURE
+Parámetros con valor por defecto
+THROW
+INSERT ... SELECT con OUTPUT inserted.*
+WITH (UPDLOCK, HOLDLOCK)
+TRY ... CATCH
+BEGIN TRAN / ROLLBACK
+```
+
+## Pregunta 8 — Funciones: estado de un ticket en una fecha y SLA por prioridad
+
+Hoy el cálculo del estado de un ticket y del SLA se repite con `CASE` y subconsultas en cada reporte. Centralizarlo en dos funciones escalares:
+
+```text
+modelado.fn_EstadoEnFecha(@id_ticket INT, @fecha_corte DATETIME) RETURNS VARCHAR(20)
+    Devuelve la descripción del estado del ticket en esa fecha:
+    el destino de su última transición con fecha <= @fecha_corte.
+    Si aún no tenía transiciones, devuelve 'Nuevo'.
+
+modelado.fn_SlaMinutos(@id_prioridad INT) RETURNS INT
+    Crítica = 240, Alta = 480, Media = 1440, Baja = 4320 (minutos).
+```
+
+Usarlas para listar los tickets **aún abiertos** al `2026-10-08` (estado distinto de *Cerrado* y *Cancelado*), con su SLA en minutos y en horas. Ordenar del SLA más corto al más largo.
+
+Resultado esperado:
+
+```text
+CodigoTicket  Prioridad  EstadoAlCorte  SlaMinutos  SlaHoras
+------------  ---------  -------------  ----------  --------
+TKT-00003     Critica    Resuelto       240         4
+TKT-00007     Alta       En Espera      480         8
+TKT-00004     Media      En Progreso    1440        24
+TKT-00005     Baja       Nuevo          4320        72
+```
+
+`TKT-00001`, `TKT-00002` y `TKT-00008` están *Cerrado*, y `TKT-00006` y `TKT-00009` están *Cancelado*, por eso no aparecen. `TKT-00003` sigue abierto porque está *Resuelto* pero nunca se cerró.
+
+### Conceptos
+
+```sql
+CREATE OR ALTER FUNCTION (escalar)
+SELECT TOP (1) @variable = ...
+ORDER BY dentro de la función
+ISNULL()
+CASE
+INNER JOIN
+WHERE con función escalar
+```
+
+## Pregunta 9 — Procedimiento + funciones: tablero de riesgo de SLA a una fecha de corte
+
+La gerencia quiere un tablero que, para cualquier fecha de corte, muestre qué tickets abiertos están **a punto de vencer** o **ya vencieron** su SLA, sin esperar a que se resuelvan.
+
+Crear el procedimiento `modelado.usp_TableroRiesgoSLA` que reutilice `fn_EstadoEnFecha` y `fn_SlaMinutos` de la pregunta 8:
+
+```text
+@fecha_corte      DATETIME        fecha de análisis
+@id_equipo        INT = NULL      si es NULL, analiza todos los equipos
+@total_vencidos   INT OUTPUT      cantidad de tickets con semáforo 'Vencido'
+```
+
+Reglas:
+
+```text
+Solo se analizan tickets creados hasta la fecha de corte (fecha <= @fecha_corte).
+Solo tickets abiertos a esa fecha: estado distinto de Resuelto, Cerrado y Cancelado.
+MinTranscurridos = minutos entre la creación del ticket y la fecha de corte.
+PctConsumido     = MinTranscurridos / SlaMin * 100  (2 decimales)
+
+Semáforo:
+    PctConsumido >= 100  -> Vencido
+    PctConsumido >= 75   -> En riesgo
+    en otro caso         -> En tiempo
+```
+
+Devolver el resultado ordenado del mayor al menor `PctConsumido`.
+
+Ejecutar con `@fecha_corte = '2026-10-03 16:00'`, primero para todos los equipos y luego solo para Cloud (id 6).
+
+Resultado esperado:
+
+```text
+-- Todos los equipos
+CodigoTicket  Equipo             Prioridad  EstadoAlCorte  SlaMin  MinTranscurridos  PctConsumido  Semaforo
+------------  -----------------  ---------  -------------  ------  ----------------  ------------  ---------
+TKT-00004     Seguridad          Media      En Progreso    1440    2980              206.94        Vencido
+TKT-00007     Cloud              Alta       En Espera      480     470               97.92         En riesgo
+TKT-00005     Canales Digitales  Baja       Nuevo          4320    1860              43.06         En tiempo
+
+TotalVencidos
+-------------
+1
+
+-- Solo Cloud (id 6)
+CodigoTicket  Equipo  Prioridad  EstadoAlCorte  SlaMin  MinTranscurridos  PctConsumido  Semaforo
+------------  ------  ---------  -------------  ------  ----------------  ------------  ---------
+TKT-00007     Cloud   Alta       En Espera      480     470               97.92         En riesgo
+
+TotalVencidos
+-------------
+0
+```
+
+A esa fecha, `TKT-00008` aún no existe (se crea a las 16:30), `TKT-00003` ya está *Resuelto*, `TKT-00001` y `TKT-00002` están *Cerrado* y `TKT-00006` está *Cancelado*.
+
+### Conceptos
+
+```sql
+CREATE OR ALTER PROCEDURE
+Parámetro OUTPUT
+Parámetro opcional con filtro (@id_equipo IS NULL OR ...)
+Funciones escalares dentro de CTE
+CTE encadenadas
+SELECT ... INTO #temporal
+DATEDIFF()
+CASE
 ```
 
 ---
@@ -360,155 +420,3 @@ SUM() OVER()
 ROW_NUMBER() / RANK()
 Subconsultas
 ```
-
-### SQL
-
-**Paso 1 — Base de SLA por ticket** (se guarda en una tabla temporal para reutilizarla)
-
-```sql
-DROP TABLE IF EXISTS #sla;
-
-WITH resolucion AS (
-    SELECT id_ticket, MIN(fecha) AS fecha_resolucion
-    FROM modelado.Transicion
-    WHERE id_transicion_despues = 5          -- 5 = Resuelto
-    GROUP BY id_ticket
-),
-base AS (
-    SELECT
-        t.id_ticket,
-        t.codigo_ticket,
-        t.id_equipo,
-        t.id_asignatario,
-        t.id_prioridad,
-        p.descripcion AS prioridad,
-        CASE t.id_prioridad
-            WHEN 1 THEN 4  * 60
-            WHEN 2 THEN 8  * 60
-            WHEN 3 THEN 24 * 60
-            WHEN 4 THEN 72 * 60
-        END AS sla_minutos,
-        DATEDIFF(MINUTE, t.fecha, r.fecha_resolucion) AS minutos_resolucion
-    FROM modelado.Ticket t
-    INNER JOIN modelado.Prioridad p ON p.id_prioridad = t.id_prioridad
-    LEFT JOIN resolucion r          ON r.id_ticket = t.id_ticket
-    WHERE NOT EXISTS (                       -- 7 = Cancelado
-        SELECT 1
-        FROM modelado.Transicion c
-        WHERE c.id_ticket = t.id_ticket
-          AND c.id_transicion_despues = 7
-    )
-)
-SELECT
-    *,
-    CASE
-        WHEN minutos_resolucion IS NULL         THEN 'Sin resolver'
-        WHEN minutos_resolucion <= sla_minutos  THEN 'Cumple'
-        ELSE 'Incumple'
-    END AS resultado
-INTO #sla
-FROM base;
-```
-
-**Paso 2 — Preguntas 1 y 2: resultado por ticket**
-
-```sql
-SELECT
-    codigo_ticket,
-    prioridad,
-    sla_minutos,
-    minutos_resolucion,
-    resultado
-FROM #sla
-ORDER BY id_prioridad, codigo_ticket;
-```
-
-**Paso 3 — Preguntas 3 y 4: cumplimiento por equipo y prioridad**
-
-```sql
-SELECT
-    e.descripcion AS Equipo,
-    s.prioridad   AS Prioridad,
-    COUNT(*)      AS Tickets,
-    SUM(CASE WHEN s.resultado = 'Cumple'       THEN 1 ELSE 0 END) AS Cumplen,
-    SUM(CASE WHEN s.resultado = 'Incumple'     THEN 1 ELSE 0 END) AS Incumplen,
-    SUM(CASE WHEN s.resultado = 'Sin resolver' THEN 1 ELSE 0 END) AS SinResolver,
-    CAST(100.0 * SUM(CASE WHEN s.resultado = 'Cumple' THEN 1 ELSE 0 END) / COUNT(*) AS DECIMAL(5,2)) AS PctCumplimiento,
-    CAST(100.0 * SUM(CASE WHEN s.resultado = 'Incumple' THEN 1 ELSE 0 END)
-         / NULLIF(SUM(SUM(CASE WHEN s.resultado = 'Incumple' THEN 1 ELSE 0 END)) OVER (), 0)
-         AS DECIMAL(5,2)) AS PctSobreTotalIncumplimientos
-FROM #sla s
-LEFT JOIN modelado.Equipo e ON e.id_equipo = s.id_equipo
-GROUP BY e.descripcion, s.id_prioridad, s.prioridad
-ORDER BY s.id_prioridad, Incumplen DESC;
-```
-
-**Paso 4 — Pregunta 5: asignatarios con más tickets sin resolver**
-
-```sql
-SELECT
-    u.nombre + ' ' + u.apellido AS Asignatario,
-    COUNT(*)                    AS TicketsSinResolver,
-    RANK() OVER (ORDER BY COUNT(*) DESC) AS Ranking
-FROM #sla s
-INNER JOIN modelado.Usuario u ON u.id_usuario = s.id_asignatario
-WHERE s.resultado = 'Sin resolver'
-GROUP BY u.nombre, u.apellido
-ORDER BY Ranking;
-```
-
-**Paso 5 — Pregunta 6: concentración de problemas por equipo**
-
-Problema = ticket que no cumple (`Incumple` + `Sin resolver`).
-
-```sql
-WITH por_equipo AS (
-    SELECT
-        e.descripcion AS Equipo,
-        COUNT(*)      AS Problemas
-    FROM #sla s
-    LEFT JOIN modelado.Equipo e ON e.id_equipo = s.id_equipo
-    WHERE s.resultado <> 'Cumple'
-    GROUP BY e.descripcion
-)
-SELECT
-    Equipo,
-    Problemas,
-    CAST(100.0 * Problemas / SUM(Problemas) OVER () AS DECIMAL(5,2)) AS PctDelTotal,
-    CAST(100.0 * SUM(Problemas) OVER (ORDER BY Problemas DESC, Equipo
-                                      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
-         / SUM(Problemas) OVER () AS DECIMAL(5,2)) AS PctAcumulado
-FROM por_equipo
-ORDER BY Problemas DESC, Equipo;
-```
-
-### Resultado con los datos actuales
-
-Se analizan 7 tickets (los cancelados `TKT-00006` y `TKT-00009` quedan fuera).
-
-```text
-Resultado por ticket (Paso 2)
-CodigoTicket  Prioridad  SLA(min)  Resolucion(min)  Resultado
-------------  ---------  --------  ---------------  ------------
-TKT-00001     Critica    240       405              Incumple
-TKT-00003     Critica    240       1735             Incumple
-TKT-00008     Critica    240       1020             Incumple
-TKT-00002     Alta       480       110              Cumple
-TKT-00007     Alta       480       NULL             Sin resolver
-TKT-00004     Media      1440      NULL             Sin resolver
-TKT-00005     Baja       4320      NULL             Sin resolver
-
-Cumplimiento por prioridad: Critica 0%, Alta 50%, Media 0%, Baja 0%.
-Asignatarios con tickets sin resolver (Paso 4): Jorge Ramirez 1, Sofia Quispe 1 (Ranking 1 ambos).
-TKT-00005 no tiene asignatario, por eso no aparece en el Paso 4.
-
-Concentracion de problemas (Paso 5)
-Equipo             Problemas  PctDelTotal  PctAcumulado
------------------  ---------  -----------  ------------
-Cloud              2          33.33        33.33
-Seguridad          2          33.33        66.67
-Canales Digitales  1          16.67        83.33
-Core Bancario      1          16.67        100.00
-```
-
-Ningún equipo explica por sí solo más de la mitad de los problemas; Cloud y Seguridad juntos concentran el 66.67%.
