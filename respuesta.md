@@ -17,7 +17,7 @@ WHERE estado = 1
   AND fecha >= '2026-09-29'
 ORDER BY fecha DESC;
 ```
-
+![alt text](imgs/image1.png)
 
 
 ## Pregunta 2 — Resumen general de tickets
@@ -32,7 +32,7 @@ SELECT
 FROM modelado.Ticket;
 ```
 
-
+![alt text](imgs/image2.png)
 
 ## Pregunta 3 — Tickets por categoría
 
@@ -46,7 +46,7 @@ LEFT JOIN modelado.Ticket t
 GROUP BY c.descripcion
 ORDER BY CantidadTickets DESC, Categoria;
 ```
-
+![alt text](imgs/image3.png)
 
 ## Pregunta 4 — Carga de trabajo por equipo (2 o más tickets)
 
@@ -62,7 +62,7 @@ GROUP BY e.descripcion
 HAVING COUNT(*) >= 2
 ORDER BY CantidadTickets DESC, Equipo;
 ```
-
+![alt text](imgs/image4.png)
 
 ## Pregunta 5 — Cuello de botella por ticket
 
@@ -99,6 +99,7 @@ INNER JOIN modelado.EstadoTransicion ed  ON ed.id_estado_transicion = r.id_trans
 WHERE r.ranking = 1
 ORDER BY t.codigo_ticket;
 ```
+![alt text](imgs/image5.png)
 
 ## Pregunta 6 — Asignatario más cargado por equipo
 
@@ -131,6 +132,7 @@ INNER JOIN modelado.Usuario u ON u.id_usuario = r.id_asignatario
 WHERE r.ranking = 1
 ORDER BY e.descripcion, Asignatario;
 ```
+![alt text](imgs/image6.png)
 
 ## Pregunta 7 — Procedimiento almacenado: cambiar el estado de un ticket
 
@@ -209,6 +211,8 @@ ROLLBACK TRAN;
 SELECT COUNT(*) AS TotalTransiciones FROM modelado.Transicion;   -- 28
 ```
 
+![alt text](imgs/image7.png)
+
 ## Pregunta 8 — Funciones: estado en una fecha y SLA por prioridad
 
 **Paso 1 — Crear las funciones**
@@ -268,6 +272,7 @@ INNER JOIN modelado.Prioridad p
 WHERE modelado.fn_EstadoEnFecha(t.id_ticket, '2026-10-08') NOT IN ('Cerrado', 'Cancelado')
 ORDER BY SlaMinutos, CodigoTicket;
 ```
+![alt text](imgs/image8.png)
 
 ## Pregunta 9 — Tablero de riesgo de SLA a una fecha de corte
 
@@ -351,7 +356,8 @@ EXEC modelado.usp_TableroRiesgoSLA
      @total_vencidos = @vencidos OUTPUT;
 SELECT @vencidos AS TotalVencidos;                -- 0
 ```
-
+![alt text](imgs/img9/image.png)
+![alt text](imgs/img9/image-1.png)
 ---
 
 ## Challenge — ¿Estamos cumpliendo los SLA de atención?
@@ -418,7 +424,7 @@ SELECT
 FROM #sla
 ORDER BY id_prioridad, codigo_ticket;
 ```
-
+![alt text](imgs/img-reto/image.png)
 
 ### Paso 3 — Cumplimiento por equipo y prioridad (preguntas 3 y 4)
 
@@ -439,7 +445,7 @@ LEFT JOIN modelado.Equipo e ON e.id_equipo = s.id_equipo
 GROUP BY e.descripcion, s.id_prioridad, s.prioridad
 ORDER BY s.id_prioridad, Incumplen DESC;
 ```
-
+![alt text](imgs/img-reto/image-1.png)
 
 ### Paso 4 — Asignatarios con más tickets sin resolver (pregunta 5)
 
@@ -454,7 +460,7 @@ WHERE s.resultado = 'Sin resolver'
 GROUP BY u.nombre, u.apellido
 ORDER BY Ranking;
 ```
-
+![alt text](imgs/img-reto/image-2.png)
 
 ### Paso 5 — Concentración de problemas por equipo (pregunta 6)
 
@@ -480,35 +486,7 @@ SELECT
 FROM por_equipo
 ORDER BY Problemas DESC, Equipo;
 ```
+![alt text](imgs/img-reto/image-3.png)
 
-### Resultado con los datos actuales
 
-Se analizan 7 tickets (los cancelados `TKT-00006` y `TKT-00009` quedan fuera).
-
-```text
-Resultado por ticket (Paso 2)
-CodigoTicket  Prioridad  SLA(min)  Resolucion(min)  Resultado
-------------  ---------  --------  ---------------  ------------
-TKT-00001     Critica    240       405              Incumple
-TKT-00003     Critica    240       1735             Incumple
-TKT-00008     Critica    240       1020             Incumple
-TKT-00002     Alta       480       110              Cumple
-TKT-00007     Alta       480       NULL             Sin resolver
-TKT-00004     Media      1440      NULL             Sin resolver
-TKT-00005     Baja       4320      NULL             Sin resolver
-
-Cumplimiento por prioridad: Critica 0%, Alta 50%, Media 0%, Baja 0%.
-Asignatarios con tickets sin resolver (Paso 4): Jorge Ramirez 1, Sofia Quispe 1 (Ranking 1 ambos).
-TKT-00005 no tiene asignatario, por eso no aparece en el Paso 4.
-
-Concentracion de problemas (Paso 5)
-Equipo             Problemas  PctDelTotal  PctAcumulado
------------------  ---------  -----------  ------------
-Cloud              2          33.33        33.33
-Seguridad          2          33.33        66.67
-Canales Digitales  1          16.67        83.33
-Core Bancario      1          16.67        100.00
-```
-
-Ningún equipo explica por sí solo más de la mitad de los problemas; Cloud y Seguridad juntos concentran el 66.67%.
 
